@@ -1,19 +1,5 @@
 <?php
 
-    #server conneection
-    $hostname = "localhost";
-    $username = "root";
-    $password = "";
-    $database = "salon";
-
-    $connection =  new mysqli($hostname, $username, $password, $database);
-
-    if ($connection -> connect_error) {
-        die("Connection failed: " . $connection -> connect_error);
-    }else{
-        echo "<script>console.log('Connection granted')</script>";
-    }
-
     #display function
     function displayTables($table, $connection){
         if(!is_array($table)){
@@ -44,4 +30,5 @@
             echo "</table>";
         }
     }
+    
 ?>

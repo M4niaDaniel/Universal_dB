@@ -4,16 +4,20 @@
         <meta charset="UTF-8">
         <title>Tables</title>
         <link rel="stylesheet" href="style.css">
-        <?php include "setup.php" ?>
     </head>
     <body>
         <?php
+            include "connect.php";
+            include "setup.php";
+
             /*$tables = [
-                table1,
-                table2
+                #table1,
+                #table2
             ];
-            displayTables($tables, $connection);
-            displayTables($_GET["table"], $connection);*/
+            #displayTables($tables, $connection);
+            if(isset($_GET["table"])){
+                displayTables($_GET["table"], $connection);
+            }*/
             mysqli_close($connection);
         ?>
     </body>
