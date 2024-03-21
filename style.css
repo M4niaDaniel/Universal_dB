@@ -1,0 +1,12 @@
+body{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+td, th{
+    border: black 1px solid;
+}
+table{
+    border-spacing: 0;
+    border: black 1px solid;
+}

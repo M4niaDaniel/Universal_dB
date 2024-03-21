@@ -4,7 +4,7 @@
     $hostname = "localhost";
     $username = "root";
     $password = "";
-    $database = "finanse_2p2";
+    $database = "salon";
 
     $connection =  new mysqli($hostname, $username, $password, $database);
 
@@ -15,7 +15,12 @@
     }
 
     #display function
-    function displayTables($tables, $connection){
+    function displayTables($table, $connection){
+        if(!is_array($table)){
+            $tables = [$table];
+        }else{
+            $tables = $table;
+        }
         for($i=0;$i<count($tables);$i++){
 
             $sql = "SELECT * FROM ".$tables[$i];

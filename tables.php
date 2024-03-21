@@ -8,7 +8,13 @@
     </head>
     <body>
         <?php
+            /*$tables = [
+                table1,
+                table2
+            ];
             displayTables($tables, $connection);
+            displayTables($_GET["table"], $connection);*/
+            mysqli_close($connection);
         ?>
     </body>
 </html>
