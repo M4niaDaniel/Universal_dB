@@ -6,7 +6,18 @@ body{
 td, th{
     border: black 1px solid;
 }
+tr:nth-child(odd){
+    background-color: #666;
+    color: white;
+}
+th{
+    background-color: #333;
+    color: white;
+}
 table{
     border-spacing: 0;
     border: black 1px solid;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 200px;
 }

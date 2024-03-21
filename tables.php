@@ -10,14 +10,17 @@
             include "connect.php";
             include "setup.php";
 
-            /*$tables = [
-                #table1,
-                #table2
+            $tables = [
+                #"table1",
+                #"table2",
+                "user_details",
             ];
-            #displayTables($tables, $connection);
+            $sql_addition = "WHERE gender = 'Female'";
+
+            displayTables($tables, $connection, $sql_addition);
             if(isset($_GET["table"])){
-                displayTables($_GET["table"], $connection);
-            }*/
+                displayTables($_GET["table"], $connection, "");
+            }
             mysqli_close($connection);
         ?>
     </body>

@@ -1,7 +1,7 @@
 <?php
 
     #display function
-    function displayTables($table, $connection){
+    function displayTables($table, $connection, $addSQL){
         if(!is_array($table)){
             $tables = [$table];
         }else{
@@ -9,7 +9,7 @@
         }
         for($i=0;$i<count($tables);$i++){
 
-            $sql = "SELECT * FROM ".$tables[$i];
+            $sql = "SELECT * FROM ".$tables[$i].' '.$addSQL;
             $result = $connection->query($sql);
             $result2 = $connection->query($sql) ->fetch_assoc();
 
@@ -30,5 +30,5 @@
             echo "</table>";
         }
     }
-    
+
 ?>
