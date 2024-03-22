@@ -4,7 +4,7 @@
     $hostname = "localhost";
     $username = "root";
     $password = "";
-    $database = "";
+    $database = "1_gb_of_pure_data";
 
     $connection =  new mysqli($hostname, $username, $password, $database);
 
