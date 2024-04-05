@@ -7,20 +7,15 @@
     </head>
     <body>
         <?php
-            include "connect.php";
             include "setup.php";
 
+            $dataBase1 = new Database('localhost', 'root', '', '1gb_of_pure_data');
             $tables = [
                 #"table1",
                 #"table2",
             ];
-            $sql_addition = "WHERE gender = 'Female'";
-
-            displayTables($tables, $connection, $sql_addition);
-            if(isset($_GET["table"])){
-                displayTables($_GET["table"], $connection, "");
-            }
-            mysqli_close($connection);
+            $dataBase1->displayTables('user_details', '');
+            $dataBase1->close();
         ?>
     </body>
 </html>
