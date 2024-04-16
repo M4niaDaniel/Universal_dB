@@ -56,6 +56,25 @@
                 echo "</table>";
             }
         }
+        function generateForm($table){
+        $result = $this->connection->query("DESCRIBE $table");
+        $columns = [];
+        while ($row = $result->fetch_assoc()) {
+            $columns[] = $row['Field'];
+        }
+        
+        $form = "<form method='post'>";
+        foreach ($columns as $column) {
+            if ($column != 'id') {
+                $form .= "<label for='$column'>$column:</label>";
+                $form .= "<input type='text' id='$column' name='$column'><br>";
+            }
+        }
+        $form .= "<input type='submit' value='Submit'>";
+        $form .= "</form>";
+        
+        echo $form;
+        }
         function close(){
             mysqli_close($this->connection);
         }
