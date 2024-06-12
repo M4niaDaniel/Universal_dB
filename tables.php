@@ -15,6 +15,7 @@
                 #"table2",
             ];
             $dataBase1->displayTables('user_details', '');
+            $dataBase1->generateForm('user_details', '');
             $dataBase1->close();
         ?>
     </body>
