@@ -1,6 +1,5 @@
 <?php
 class Database {
-
     private $hostname;
     private $username;
     private $password;
@@ -8,17 +7,13 @@ class Database {
     private $connection;
 
     function __construct($hostname, $username, $password, $database) {
-
-        // Initialize database connection details
         $this->hostname = $hostname;
         $this->username = $username;
         $this->password = $password;
         $this->database = $database;
 
-        // Establish connection to the database
-        $this->connection = new mysqli($this->hostname, $this->username, $this->password, $this->database);
-        
-        // Check connection
+        $this->connection = new mysqli($hostname, $username, $password, $database);
+
         if ($this->connection->connect_error) {
             die("Connection failed: " . $this->connection->connect_error);
         } else {
@@ -26,10 +21,28 @@ class Database {
         }
     }
 
-    // Function to display tables
-    function displayTables($table, $addSQL) {
+    public function handleRequest() {
+        if (isset($_GET['delete'], $_GET['id'])) {
+            $this->deleteRecord($_GET['delete'], $_GET['id']);
+        }
+
+        if (isset($_GET['edit'], $_GET['id'])) {
+            $this->editRecord($_GET['edit'], $_GET['id']);
+            exit; // Stop other content from rendering
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            if (isset($_POST['__edit_submit'])) {
+                $this->updateRecord($_POST['__edit_table'], $_POST['__edit_id'], $_POST);
+            } elseif (!empty($_POST)) {
+                $this->handleFormSubmission($_POST['__form_table'] ?? '');
+            }
+        }
+    }
+
+    function displayTables($table, $addSQL = '') {
         $tables = is_array($table) ? $table : [$table];
-        
+
         foreach ($tables as $tbl) {
             $sql = "SELECT * FROM " . $tbl . ' ' . $addSQL;
             $result = $this->connection->query($sql);
@@ -39,69 +52,43 @@ class Database {
             }
 
             $result2 = $result->fetch_assoc();
-            
             if (!$result2) {
-                die("Failed to fetch data: " . $this->connection->error);
+                echo "<p>No data found in table '$tbl'.</p>";
+                continue;
             }
 
-            echo "<table><tr>";
+            echo "<h3>Table: $tbl</h3>";
+            echo "<table border='1' cellpadding='5'><tr>";
             foreach ($result2 as $key => $value) {
-                echo "<th>" . $key . "</th>";
+                echo "<th>" . htmlspecialchars($key) . "</th>";
             }
-            echo "</tr>";
+            echo "<th>Actions</th></tr>";
 
-            $result->data_seek(0); // Reset result pointer
-            while ($row = $result->fetch_array(MYSQLI_NUM)) {   
+            $result->data_seek(0);
+            $pk = $this->getPrimaryKey($tbl);
+            while ($row = $result->fetch_assoc()) {
                 echo "<tr>";
                 foreach ($row as $cell) {
-                    echo "<td>" . $cell . "</td>";
+                    echo "<td>" . htmlspecialchars($cell) . "</td>";
                 }
-                echo "</tr>";
+
+                $id = $row[$pk];
+                echo "<td>
+                    <a href='?edit=$tbl&id=$id' target='_blank'>Edit</a> |
+                    <a href='?delete=$tbl&id=$id' onclick=\"return confirm('Are you sure?')\">Delete</a>
+                </td></tr>";
             }
-            echo "</table>";
+            echo "</table><br>";
         }
     }
 
-    // Function to generate HTML form based on table structure
     public function generateForm($table) {
-        // Check if form has been submitted
-        if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-            $this->handleFormSubmission($table);
-        }
-
-        // Always display the form
         $this->displayForm($table);
     }
 
-    // Function to handle form submission
-    private function handleFormSubmission($table) {
-        // Output received POST data for debugging
-        echo "Previous Submit: <pre>";
-        print_r($_POST);
-        echo "</pre>";
-
-        // Prepare an insert query
-        $columns = [];
-        $values = [];
-        foreach ($_POST as $key => $value) {
-            $columns[] = $key;
-            $values[] = "'" . $this->connection->real_escape_string($value) . "'";
-        }
-
-        $sql = "INSERT INTO $table (" . implode(", ", $columns) . ") VALUES (" . implode(", ", $values) . ")";
-        if ($this->connection->query($sql) === TRUE) {
-            echo "New record created successfully";
-        } else {
-            echo "Error: " . $sql . "<br>" . $this->connection->error;
-        }
-    }
-
-    // Function to display the form
     private function displayForm($table) {
-        // Describe the table to get column details
-        $result = $this->connection->query("DESCRIBE $table");
+        $result = $this->connection->query("DESCRIBE `$table`");
 
-        // Check for query execution success
         if (!$result) {
             die("Query failed: " . $this->connection->error);
         }
@@ -111,33 +98,157 @@ class Database {
             $columns[] = $row;
         }
 
-        // Check if columns were fetched correctly
         if (empty($columns)) {
-            die("No columns found or failed to fetch columns from the table.");
+            die("No columns found.");
         }
 
-        // Start building the form
-        $form = "<form method='post' action='" . $_SERVER['PHP_SELF'] . "'>";
+        $form = "<h3>Insert New Record into '$table'</h3>";
+        $form .= "<form method='post' action=''>";
+        $form .= "<input type='hidden' name='__form_table' value='" . htmlspecialchars($table) . "'>";
+
         foreach ($columns as $column) {
-            // Skip columns that are keys
-            if ($column['Key'] == '') {
-                $form .= "<label for='{$column['Field']}'>{$column['Field']}:</label>";
-                $form .= "<input type='text' id='{$column['Field']}' name='{$column['Field']}'><br>";
-            }
+            if ($column['Key'] === 'PRI' && strpos($column['Extra'], 'auto_increment') !== false) continue;
+
+            $form .= "<label for='{$column['Field']}'>{$column['Field']}:</label>";
+            $form .= "<input type='text' id='{$column['Field']}' name='{$column['Field']}'><br><br>";
         }
+
         $form .= "<input type='submit' value='Submit'>";
         $form .= "</form>";
 
-        // Output the form
         echo $form;
     }
 
-    // Function to close the database connection
+    private function handleFormSubmission($table) {
+        if (!$table) return;
+
+        $columns = [];
+        $values = [];
+        foreach ($_POST as $key => $value) {
+            if (str_starts_with($key, '__')) continue;
+            $columns[] = "`" . $this->connection->real_escape_string($key) . "`";
+            $values[] = "'" . $this->connection->real_escape_string($value) . "'";
+        }
+
+        $sql = "INSERT INTO `$table` (" . implode(", ", $columns) . ") VALUES (" . implode(", ", $values) . ")";
+        if ($this->connection->query($sql) === TRUE) {
+            echo "<p>New record created successfully.</p>";
+        } else {
+            echo "<p>Error: " . htmlspecialchars($this->connection->error) . "</p>";
+        }
+    }
+
+    public function deleteRecord($table, $id) {
+        $pk = $this->getPrimaryKey($table);
+        if (!$pk) {
+            echo "No primary key found.";
+            return;
+        }
+
+        $stmt = $this->connection->prepare("DELETE FROM `$table` WHERE `$pk` = ?");
+        $stmt->bind_param('i', $id);
+
+        if ($stmt->execute()) {
+            echo "<p>Record deleted successfully.</p>";
+        } else {
+            echo "<p>Error: " . htmlspecialchars($stmt->error) . "</p>";
+        }
+
+        $stmt->close();
+    }
+
+    public function editRecord($table, $id) {
+        echo "<!DOCTYPE html><html><head><title>Edit Record</title></head><body>";
+        echo "<h2>Edit Record in '$table'</h2>";
+
+        $columns = $this->getTableColumns($table);
+        $pk = $this->getPrimaryKey($table);
+
+        $stmt = $this->connection->prepare("SELECT * FROM `$table` WHERE `$pk` = ?");
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $rowData = $result->fetch_assoc();
+        $stmt->close();
+
+        if (!$rowData) {
+            echo "<p>Record not found.</p></body></html>";
+            return;
+        }
+
+        echo "<form method='post' action=''>";
+        echo "<input type='hidden' name='__edit_table' value='" . htmlspecialchars($table) . "'>";
+        echo "<input type='hidden' name='__edit_id' value='" . htmlspecialchars($id) . "'>";
+
+        foreach ($columns as $col) {
+            $field = $col['Field'];
+            if ($col['Key'] === 'PRI' && strpos($col['Extra'], 'auto_increment') !== false) continue;
+
+            $value = htmlspecialchars($rowData[$field]);
+            echo "<label for='$field'>$field:</label>";
+            echo "<input type='text' name='$field' value='$value'><br><br>";
+        }
+
+        echo "<input type='submit' name='__edit_submit' value='Update'>";
+        echo "</form>";
+        echo "<p><a href='javascript:window.close()'>Close</a></p>";
+        echo "</body></html>";
+    }
+
+    public function updateRecord($table, $id, $postData) {
+        $pk = $this->getPrimaryKey($table);
+        $columns = $this->getTableColumns($table);
+
+        $updates = [];
+        $types = '';
+        $values = [];
+
+        foreach ($columns as $col) {
+            $field = $col['Field'];
+            if ($field == $pk || !isset($postData[$field])) continue;
+
+            $updates[] = "`$field` = ?";
+            $types .= 's';
+            $values[] = $postData[$field];
+        }
+
+        $types .= 'i';
+        $values[] = $id;
+
+        $sql = "UPDATE `$table` SET " . implode(', ', $updates) . " WHERE `$pk` = ?";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param($types, ...$values);
+
+        if ($stmt->execute()) {
+            echo "<p>Record updated successfully.</p>";
+        } else {
+            echo "<p>Error updating: " . htmlspecialchars($stmt->error) . "</p>";
+        }
+
+        $stmt->close();
+    }
+
+    private function getPrimaryKey($table) {
+        $result = $this->connection->query("SHOW KEYS FROM `$table` WHERE Key_name = 'PRIMARY'");
+        $row = $result->fetch_assoc();
+        return $row['Column_name'] ?? null;
+    }
+
+    private function getTableColumns($table) {
+        $result = $this->connection->query("DESCRIBE `$table`");
+        $columns = [];
+
+        while ($row = $result->fetch_assoc()) {
+            $columns[] = $row;
+        }
+
+        return $columns;
+    }
+
     function close() {
         if ($this->connection) {
             $this->connection->close();
         }
     }
 }
-
 ?>

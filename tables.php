@@ -14,8 +14,11 @@
                 #"table1",
                 #"table2",
             ];
-            $dataBase1->displayTables('user_details', '');
-            $dataBase1->generateForm('user_details');
+            if (!isset($_GET['edit'], $_GET['id'])) {
+                $dataBase1->displayTables('user_details');
+            }
+            $dataBase1->handleRequest();
+            //$dataBase1->generateForm('user_details');
             $dataBase1->close();
         ?>
     </body>

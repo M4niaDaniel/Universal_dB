@@ -12,4 +12,4 @@ class Database features functions as :
     ->generateForm('givenTable')
         generates a form to inject data
     ->close()
-        closes conetion with database
+        closes connection with database
