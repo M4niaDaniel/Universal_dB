@@ -26,21 +26,27 @@ class Database {
             $this->deleteRecord($_GET['delete'], $_GET['id']);
         }
 
-        if (isset($_GET['edit'], $_GET['id'])) {
-            $this->editRecord($_GET['edit'], $_GET['id']);
-            exit; // Stop other content from rendering
-        }
-
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (isset($_POST['__edit_submit'])) {
                 $this->updateRecord($_POST['__edit_table'], $_POST['__edit_id'], $_POST);
+                header("Location: " . $_SERVER['PHP_SELF']);
+                exit;
             } elseif (!empty($_POST)) {
                 $this->handleFormSubmission($_POST['__form_table'] ?? '');
             }
         }
+
+        if (isset($_GET['edit'], $_GET['id'])) {
+            $this->editRecord($_GET['edit'], $_GET['id']);
+            exit;
+        }
     }
 
     function displayTables($table, $addSQL = '') {
+        if (isset($_GET['edit'], $_GET['id'])) {
+            return; // Don't show tables if we're editing
+        }
+
         $tables = is_array($table) ? $table : [$table];
 
         foreach ($tables as $tbl) {
@@ -74,7 +80,7 @@ class Database {
 
                 $id = $row[$pk];
                 echo "<td>
-                    <a href='?edit=$tbl&id=$id' target='_blank'>Edit</a> |
+                    <a href='?edit=$tbl&id=$id'>Edit</a> |
                     <a href='?delete=$tbl&id=$id' onclick=\"return confirm('Are you sure?')\">Delete</a>
                 </td></tr>";
             }
@@ -83,7 +89,9 @@ class Database {
     }
 
     public function generateForm($table) {
-        $this->displayForm($table);
+        if (!isset($_GET['edit'])) {
+            $this->displayForm($table);
+        }
     }
 
     private function displayForm($table) {
@@ -158,7 +166,6 @@ class Database {
     }
 
     public function editRecord($table, $id) {
-        echo "<!DOCTYPE html><html><head><title>Edit Record</title></head><body>";
         echo "<h2>Edit Record in '$table'</h2>";
 
         $columns = $this->getTableColumns($table);
@@ -172,7 +179,7 @@ class Database {
         $stmt->close();
 
         if (!$rowData) {
-            echo "<p>Record not found.</p></body></html>";
+            echo "<p>Record not found.</p>";
             return;
         }
 
@@ -191,8 +198,7 @@ class Database {
 
         echo "<input type='submit' name='__edit_submit' value='Update'>";
         echo "</form>";
-        echo "<p><a href='javascript:window.close()'>Close</a></p>";
-        echo "</body></html>";
+        echo "<p><a href='" . $_SERVER['PHP_SELF'] . "'>Back to table</a></p>";
     }
 
     public function updateRecord($table, $id, $postData) {
@@ -219,9 +225,7 @@ class Database {
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param($types, ...$values);
 
-        if ($stmt->execute()) {
-            echo "<p>Record updated successfully.</p>";
-        } else {
+        if (!$stmt->execute()) {
             echo "<p>Error updating: " . htmlspecialchars($stmt->error) . "</p>";
         }
 
